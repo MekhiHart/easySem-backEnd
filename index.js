@@ -1,12 +1,32 @@
 const express = require("express")
-const puppeteer = require("puppeteer")
-
-const PORT = process.env.PORT || 3001;
-
 const app = express();
-const url = "https://learnwebcode.github.io/practice-requests/"
+const puppeteer = require("puppeteer")
+const PORT = process.env.PORT || 3001; // Chooses between ports; first parameter is automatic (SEE fullstack web app article from freeCodeCamp)
 
-const fs = require("fs/promises")
+
+
+// * Socket.io add ons
+const http = require("http")
+const {Server} = require("socket.io")
+const cors = require("cors")
+app.use(cors())
+
+const server = http.createServer(app)
+const io = new Server(server,{
+  cors:{
+    origin:"http://localhost:3000",
+    methods: ["GET","POST"],
+  }
+})
+
+
+
+
+// ! Another way to create a server
+
+
+// app.use(express.static(".\\client\\src")) // *Don't know what this does
+// app.use(express.json()) // * Don't know what this does
 
 
 /* 
@@ -25,9 +45,9 @@ async function start(){
 }
 
 
-app.get("/api", (req,res) =>{ // ! This is an API!
-    res.json({message:"Hello from server"})
-})
+// app.get("/api", (req,res) =>{ // ! This is an API!
+//     res.json({message:"Hello from server"})
+// })
 
 app.get('/screenshot', async (req, res) => {
   const browser = await puppeteer.launch();
@@ -101,13 +121,31 @@ app.get("/collegeGE" ,async(req,res) =>{
   await browser.close()
 })
 
+// app.post("/api", (req,res) =>{
+//   // res.send("Hello from server")
+//   console.log("I got a request")
+//   console.log("Request: ",req)
+// })
 
 
 
 
+// app.listen(PORT, () => { // * Server listens to PORT
+//   console.log(`Server listening on ${PORT}`);
+// });
 
-app.listen(PORT, () => { // * Server listens to PORT
-  console.log(`Server listening on ${PORT}`);
-});
+// ! FOR POST REQUESTS
+io.on("connection", (socket) => { // * Detects whenever someone connects to the website
+
+  socket.on("send_message", (data) =>{
+    console.log("Data from client to server",data.message)
+  })
+})
+
+
+server.listen(PORT, () =>{
+  console.log(`Server listening on ${PORT}`)
+})
+
 
 
