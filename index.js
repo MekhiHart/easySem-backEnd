@@ -70,10 +70,30 @@ app.get("/collegeMajors", async (req,res) =>{
   let collegeMajors = await page.evaluate( () =>{ // * Returns an array of all CSULB majors
     return Array.from(document.querySelectorAll(".indexList ul li")).map(name => name.textContent)
   })
-  
+
   collegeMajors = [...new Set(collegeMajors)] // * Removes duplicates from array
 
   collegeMajors = collegeMajors.map(majorName => ({major:majorName,isSelected:false}))
+
+
+  res.json(collegeMajors) // * Returns array of objects
+
+  await browser.close()
+})
+
+app.get("/collegeGE" ,async(req,res) =>{
+  const browser  = await puppeteer.launch()
+  const page = await browser.newPage()
+  const url = "http://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/By_GE_Requirement/index.html"
+  await page.goto(url)
+
+  let collegeMajors = await page.evaluate( () =>{ // * Returns an array of all CSULB majors
+    return Array.from(document.querySelectorAll(".indexList ol li a")).map(name => name.textContent)
+  })
+
+  collegeMajors = [...new Set(collegeMajors)] // * Removes duplicates from array
+
+  collegeMajors = collegeMajors.map(majorName => ({GE:majorName,isSelected:false}))
 
 
   res.json(collegeMajors) // * Returns array of objects
