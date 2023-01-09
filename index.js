@@ -81,7 +81,7 @@ app.get("/classes", async (req,res) =>{
 })
 
 
-app.get("/collegeMajors", async (req,res) =>{
+app.get("/get_collegeMajors", async (req,res) =>{
   const browser  = await puppeteer.launch()
   const page = await browser.newPage()
   const url = "http://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/By_College/index.html"
@@ -93,7 +93,7 @@ app.get("/collegeMajors", async (req,res) =>{
 
   collegeMajors = [...new Set(collegeMajors)] // * Removes duplicates from array
 
-  collegeMajors = collegeMajors.map(majorName => ({major:majorName,isSelected:false}))
+  collegeMajors = collegeMajors.map(majorName => ({valueName:majorName,isSelected:false})) // *Needs to have a value the same as GE
 
 
   res.json(collegeMajors) // * Returns array of objects
@@ -101,7 +101,7 @@ app.get("/collegeMajors", async (req,res) =>{
   await browser.close()
 })
 
-app.get("/collegeGE" ,async(req,res) =>{
+app.get("/get_collegeGE" ,async(req,res) =>{
   const browser  = await puppeteer.launch()
   const page = await browser.newPage()
   const url = "http://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/By_GE_Requirement/index.html"
@@ -113,7 +113,7 @@ app.get("/collegeGE" ,async(req,res) =>{
 
   collegeMajors = [...new Set(collegeMajors)] // * Removes duplicates from array
 
-  collegeMajors = collegeMajors.map(majorName => ({GE:majorName,isSelected:false}))
+  collegeMajors = collegeMajors.map(majorName => ({valueName:majorName,isSelected:false}))
 
 
   res.json(collegeMajors) // * Returns array of objects
@@ -137,8 +137,8 @@ app.get("/collegeGE" ,async(req,res) =>{
 // ! FOR POST REQUESTS
 io.on("connection", (socket) => { // * Detects whenever someone connects to the website
 
-  socket.on("send_message", (data) =>{
-    console.log("Data from client to server",data.message)
+  socket.on("find_classes", (data) =>{
+    console.log("Data from client to server",data.data)
   })
 })
 
