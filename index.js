@@ -84,7 +84,7 @@ app.get("/classes", async (req,res) =>{
 app.get("/get_collegeMajors", async (req,res) =>{
   const browser  = await puppeteer.launch()
   const page = await browser.newPage()
-  const url = "http://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/By_College/index.html"
+  const url = "http://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/By_College/index.html" // TODO change into dynamic html
   await page.goto(url)
 
   let collegeMajors = await page.evaluate( () =>{ // * Returns an array of all CSULB majors
@@ -104,7 +104,7 @@ app.get("/get_collegeMajors", async (req,res) =>{
 app.get("/get_collegeGE" ,async(req,res) =>{
   const browser  = await puppeteer.launch()
   const page = await browser.newPage()
-  const url = "http://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/By_GE_Requirement/index.html"
+  const url = "http://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/By_GE_Requirement/index.html" // TODO change into dynamic html
   await page.goto(url)
 
   let collegeMajors = await page.evaluate( () =>{ // * Returns an array of all CSULB majors
@@ -135,12 +135,45 @@ app.get("/get_collegeGE" ,async(req,res) =>{
 // });
 
 // ! FOR POST REQUESTS
-io.on("connection", (socket) => { // * Detects whenever someone connects to the website
+io.on("connection",  (socket) => { // * Detects whenever someone connects to the website
+  socket.on("find_classes", async (data) =>{
+  
+    let returnData = {selectedMajors:[], selectedGenEd:[]}
+    const {selectedMajors,selectedGenEd} = data.data
 
-  socket.on("find_classes", (data) =>{
-    console.log("Data from client to server",data.data)
-  })
-})
+    const selectedGE = {nameValue:"UD B", availableClasses:[]}
+    const test = await selectedMajors.map(  async  (majorObj) =>{
+        const browser  = await puppeteer.launch()
+        const page = await browser.newPage()
+        const majorName = majorObj.valueName
+        const majorSplit = majorName.split(" ") // Splites valueName into elements of an array
+        let abbreviation = majorSplit[majorSplit.length - 1] // Gets abbreviation from the split, and separte each character
+        const idxLeft = abbreviation.indexOf("(") + 1 // + 1 removes does not invlude the parenthesis
+        const idxRight = abbreviation.indexOf(")") 
+        abbreviation = abbreviation.slice(idxLeft,idxRight) // left with the abbreviation with no parethesis
+
+        const url = `https://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/By_College/${abbreviation}.html` // TODO Make HTML DYNAMIC!!
+        await page.goto(url)
+
+        const availableClasses = await page.evaluate( () =>{ // * Returns an array of all CSULB majors
+          return Array.from(document.querySelectorAll(".courseHeader h4")).map(name => name.textContent)
+        })
+
+        // console.log(availableClasses)
+        returnData.test = "Cow"
+        console.log( majorObj.valueName, availableClasses)
+        await browser.close()
+
+        return availableClasses
+
+      }) // forEach
+
+      // console.log("Test: ",test)  // TODO: For some reason the "test" is resolving into a promise, and I'm unable to change returnData, fix the issuse for that future Mekhi after you come back for the trip :)
+
+     
+    // await browser.close()
+  }) //socket.on
+}) // io.on
 
 
 server.listen(PORT, () =>{
