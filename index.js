@@ -173,9 +173,12 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
       const availableClasses = await page.evaluate( () =>{ // * Returns an array of all CSULB majors
         return Array.from(document.querySelectorAll(".courseHeader h4")).map(name => name.textContent)
       })
-      console.log("Major Name: ",majorName, " Available Classes: ",availableClasses)
-      returnData.selectedMajors.push({valueName:majorName, availableClasses:availableClasses}) // * Push to returnData
+      returnData.selectedMajors.push({valueName:majorName, availableClasses:availableClasses.map(className =>({
+        className: className,
+        isSelected: false
+      }) )}) // * Push to returnData
     }
+    // returnData.selectedMajors = returnData.selectedMajors.map(obj => )
 
     for (let i=0; i < selectedGenEd.length; i++){ // for loop for the selected GEN ed classes
       const type = "GE"
@@ -185,12 +188,16 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
       const availableClasses = await page.evaluate( () =>{ // * Returns an array of all CSULB majors
         return Array.from(document.querySelectorAll(".courseHeader h4")).map(name => name.textContent)
       })
-      returnData.selectedGenEd.push({valueName:geName, availableClasses:availableClasses}) // * Push to returnData
+      returnData.selectedGenEd.push({valueName:geName, availableClasses:availableClasses.map(className => ({
+        className: className,
+        isSelected: false
+      }))}) // * Push to returnData
     }
 
     await browser.close()
-
-    // TODO figure out a way to return the data into the client
+    socket.emit("getSelectedClasses", returnData) // Sends available classes
+    
+    
     
   }) //socket.on
 }) // io.on
