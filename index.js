@@ -137,41 +137,61 @@ app.get("/get_collegeGE" ,async(req,res) =>{
 // ! FOR POST REQUESTS
 io.on("connection",  (socket) => { // * Detects whenever someone connects to the website
   socket.on("find_classes", async (data) =>{
+
+    function getURL(name,type){ // gets url for the check boxes selected
+      const idxLeft = name.indexOf("(") + 1 // + 1 removes does not invlude the parenthesis
+      const idxRight = name.indexOf(")") 
+      abbreviation = name.slice(idxLeft,idxRight) // left with the abbreviation with no parethesis
+
+      switch(type){
+        case "major": // * for majors
+          return `https://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/By_College/${abbreviation}.html` // TODO: Make dynamic HTML
+
+        case "GE": // * for GE's
+          const targetSlash = "/"
+          const replaceSlash = "-"
+          const target_UD = "UD "
+          const replace_UD = "UD-"
+          abbreviation = abbreviation.replace(targetSlash,replaceSlash)
+          abbreviation = abbreviation.replace(target_UD,replace_UD )
+
+          return `http://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/By_GE_Requirement/${abbreviation}.html` // TODO: Make dynamic HTML
+      }  
+    }
   
-    let returnData = {selectedMajors:[], selectedGenEd:[]}
+    let returnData = {selectedMajors:[], selectedGenEd:[]} // ! Data that is returned to the client
     const {selectedMajors,selectedGenEd} = data.data
 
-    const selectedGE = {nameValue:"UD B", availableClasses:[]}
-    const test = await selectedMajors.map(  async  (majorObj) =>{
-        const browser  = await puppeteer.launch()
-        const page = await browser.newPage()
-        const majorName = majorObj.valueName
-        const majorSplit = majorName.split(" ") // Splites valueName into elements of an array
-        let abbreviation = majorSplit[majorSplit.length - 1] // Gets abbreviation from the split, and separte each character
-        const idxLeft = abbreviation.indexOf("(") + 1 // + 1 removes does not invlude the parenthesis
-        const idxRight = abbreviation.indexOf(")") 
-        abbreviation = abbreviation.slice(idxLeft,idxRight) // left with the abbreviation with no parethesis
+    const browser  = await puppeteer.launch()
+    const page = await browser.newPage()
 
-        const url = `https://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/By_College/${abbreviation}.html` // TODO Make HTML DYNAMIC!!
-        await page.goto(url)
+    for (let i = 0; i < selectedMajors.length; i++){ // for loop for the selected major classes
+      const type = "major"
+      const majorName = selectedMajors[i].valueName
+      const url = getURL(majorName,type) // TODO Make HTML DYNAMIC!!
+      await page.goto(url) // goes to url
+      const availableClasses = await page.evaluate( () =>{ // * Returns an array of all CSULB majors
+        return Array.from(document.querySelectorAll(".courseHeader h4")).map(name => name.textContent)
+      })
+      console.log("Major Name: ",majorName, " Available Classes: ",availableClasses)
+      returnData.selectedMajors.push({valueName:majorName, availableClasses:availableClasses}) // * Push to returnData
+    }
 
-        const availableClasses = await page.evaluate( () =>{ // * Returns an array of all CSULB majors
-          return Array.from(document.querySelectorAll(".courseHeader h4")).map(name => name.textContent)
-        })
+    for (let i=0; i < selectedGenEd.length; i++){ // for loop for the selected GEN ed classes
+      const type = "GE"
+      const geName = selectedGenEd[i].valueName
+      const url = getURL(geName,type)
+      await page.goto(url) // goes to url
+      const availableClasses = await page.evaluate( () =>{ // * Returns an array of all CSULB majors
+        return Array.from(document.querySelectorAll(".courseHeader h4")).map(name => name.textContent)
+      })
+      returnData.selectedGenEd.push({valueName:geName, availableClasses:availableClasses}) // * Push to returnData
+    }
 
-        // console.log(availableClasses)
-        returnData.test = "Cow"
-        console.log( majorObj.valueName, availableClasses)
-        await browser.close()
+    await browser.close()
 
-        return availableClasses
-
-      }) // forEach
-
-      // console.log("Test: ",test)  // TODO: For some reason the "test" is resolving into a promise, and I'm unable to change returnData, fix the issuse for that future Mekhi after you come back for the trip :)
-
-     
-    // await browser.close()
+    // TODO figure out a way to return the data into the client
+    
   }) //socket.on
 }) // io.on
 
