@@ -137,7 +137,7 @@ app.get("/get_collegeGE" ,async(req,res) =>{
 // ! FOR POST REQUESTS
 io.on("connection",  (socket) => { // * Detects whenever someone connects to the website
   socket.on("find_classes", async (data) =>{
-
+    console.log("data recieved in server: ", data)
     function getURL(name,type){ // gets url for the check boxes selected
       const idxLeft = name.indexOf("(") + 1 // + 1 removes does not invlude the parenthesis
       const idxRight = name.indexOf(")") 
@@ -159,7 +159,7 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
       }  
     }
   
-    let returnData = {selectedMajors:[], selectedGenEd:[]} // ! Data that is returned to the client
+    let returnData = [] // ! Data that is returned to the client
     const {selectedMajors,selectedGenEd} = data.data
 
     const browser  = await puppeteer.launch()
@@ -173,7 +173,7 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
       const availableClasses = await page.evaluate( () =>{ // * Returns an array of all CSULB majors
         return Array.from(document.querySelectorAll(".courseHeader h4")).map(name => name.textContent)
       })
-      returnData.selectedMajors.push({valueName:majorName, availableClasses:availableClasses.map(className =>({
+      returnData.push({valueName:majorName, availableClasses:availableClasses.map(className =>({
         className: className,
         isSelected: false
       }) )}) // * Push to returnData
@@ -188,7 +188,7 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
       const availableClasses = await page.evaluate( () =>{ // * Returns an array of all CSULB majors
         return Array.from(document.querySelectorAll(".courseHeader h4")).map(name => name.textContent)
       })
-      returnData.selectedGenEd.push({valueName:geName, availableClasses:availableClasses.map(className => ({
+      returnData.push({valueName:geName, availableClasses:availableClasses.map(className => ({
         className: className,
         isSelected: false
       }))}) // * Push to returnData
