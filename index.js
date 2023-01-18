@@ -136,31 +136,29 @@ app.get("/get_collegeGE" ,async(req,res) =>{
 
 // ! FOR POST REQUESTS
 io.on("connection",  (socket) => { // * Detects whenever someone connects to the website
-  socket.on("find_classes", async (data) =>{
-    function getURL(name,type){ // gets url for the check boxes selected
-      const idxLeft = name.indexOf("(") + 1 // + 1 removes does not invlude the parenthesis
-      const idxRight = name.indexOf(")") 
-      abbreviation = name.slice(idxLeft,idxRight) // left with the abbreviation with no parethesis
-
-      switch(type){
-        case "major": // * for majors
-          return `https://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/By_College/${abbreviation}.html` // TODO: Make dynamic HTML
-
-        case "GE": // * for GE's
-          const targetSlash = "/"
-          const replaceSlash = "-"
-          const target_UD = "UD "
-          const replace_UD = "UD-"
-          abbreviation = abbreviation.replace(targetSlash,replaceSlash)
-          abbreviation = abbreviation.replace(target_UD,replace_UD )
-
-          return `http://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/By_GE_Requirement/${abbreviation}.html` // TODO: Make dynamic HTML
-      }  
+  function getAbbreviation(name,type){ // gets url for the check boxes selected
+    const idxLeft = name.indexOf("(") + 1 // + 1 removes does not invlude the parenthesis
+    const idxRight = name.indexOf(")") 
+    let abbreviation = name.slice(idxLeft,idxRight) // left with the abbreviation with no parethesis
+    if (type === "major" || type === "byMajor"){
+      return abbreviation
     }
-  
+    else{
+      const targetSlash = "/"
+      const replaceSlash = "-"
+      const target_UD = "UD "
+      const replace_UD = "UD-"
+      abbreviation = abbreviation.replace(targetSlash,replaceSlash)
+      abbreviation = abbreviation.replace(target_UD,replace_UD )
+
+      return abbreviation
+    }
+  }
+
+  socket.on("find_classes", async (data) =>{
     let returnData = [] // ! Data that is returned to the client
     const {selectedMajors,selectedGenEd} = data.data
-    const typeMajor = "byMajor"
+    const typeMajor = "byMajor" // for url
     const typeGE = "byGE"
 
     const browser  = await puppeteer.launch()
@@ -169,7 +167,8 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
     for (let i = 0; i < selectedMajors.length; i++){ // for loop for the selected major classes
       const type = "major"
       const majorName = selectedMajors[i].valueName
-      const url = getURL(majorName,type) // TODO Make HTML DYNAMIC!!
+      const abbreviation = getAbbreviation(majorName,type)
+      const url = `https://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/By_College/${abbreviation}.html` // TODO Make HTML DYNAMIC!!
       await page.goto(url) // goes to url
       const availableClasses = await page.evaluate( () =>{ // * Returns an array of all CSULB majors
         return Array.from(document.querySelectorAll(".courseHeader h4")).map(name => name.textContent)
@@ -184,7 +183,8 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
     for (let i=0; i < selectedGenEd.length; i++){ // for loop for the selected GEN ed classes
       const type = "GE"
       const geName = selectedGenEd[i].valueName
-      const url = getURL(geName,type)
+      const abbreviation = getAbbreviation(geName,type)
+      const url = `http://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/By_GE_Requirement/${abbreviation}.html` //TODO Make HTML DYNAMIC!!
       await page.goto(url) // goes to url
       const availableClasses = await page.evaluate( () =>{ // * Returns an array of all CSULB majors
         return Array.from(document.querySelectorAll(".courseHeader h4")).map(name => name.textContent)
@@ -196,11 +196,28 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
     }
 
     await browser.close()
-    socket.emit("getSelectedClasses", returnData) // Sends available classes
+    socket.emit("getSelectedClasses", returnData) // Sends available classes to client
+
+    console.log("return data: ", returnData)
     
     
     
   }) //socket.on
+
+  socket.on("generateSchedule", async (selectedClasses) =>{
+
+    const browser  = await puppeteer.launch()
+    const page = await browser.newPage()
+    for (let i=0; i<selectedClasses.length; i++){
+      const currentClass = selectedClasses[i]
+      const type = currentClass.type
+      const abbreviation = getAbbreviation(currentClass.valueName,type)
+      const url = `http://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/${type === "byMajor" ? "By_College" : "By_GE_Requirement"}/${abbreviation}.html`
+
+      console.log(" URL: ",url)
+    }
+    await browser.close()
+  })// generateSchedule
 }) // io.on
 
 
