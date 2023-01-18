@@ -137,7 +137,6 @@ app.get("/get_collegeGE" ,async(req,res) =>{
 // ! FOR POST REQUESTS
 io.on("connection",  (socket) => { // * Detects whenever someone connects to the website
   socket.on("find_classes", async (data) =>{
-    console.log("data recieved in server: ", data)
     function getURL(name,type){ // gets url for the check boxes selected
       const idxLeft = name.indexOf("(") + 1 // + 1 removes does not invlude the parenthesis
       const idxRight = name.indexOf(")") 
@@ -161,6 +160,8 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
   
     let returnData = [] // ! Data that is returned to the client
     const {selectedMajors,selectedGenEd} = data.data
+    const typeMajor = "byMajor"
+    const typeGE = "byGE"
 
     const browser  = await puppeteer.launch()
     const page = await browser.newPage()
@@ -173,8 +174,8 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
       const availableClasses = await page.evaluate( () =>{ // * Returns an array of all CSULB majors
         return Array.from(document.querySelectorAll(".courseHeader h4")).map(name => name.textContent)
       })
-      returnData.push({valueName:majorName, availableClasses:availableClasses.map(className =>({
-        className: className,
+      returnData.push({valueName:majorName, type:typeMajor, availableClasses:availableClasses.map(className =>({
+        valueName: className,
         isSelected: false
       }) )}) // * Push to returnData
     }
@@ -188,8 +189,8 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
       const availableClasses = await page.evaluate( () =>{ // * Returns an array of all CSULB majors
         return Array.from(document.querySelectorAll(".courseHeader h4")).map(name => name.textContent)
       })
-      returnData.push({valueName:geName, availableClasses:availableClasses.map(className => ({
-        className: className,
+      returnData.push({valueName:geName, type:typeGE, availableClasses:availableClasses.map(className => ({
+        valueName: className,
         isSelected: false
       }))}) // * Push to returnData
     }
