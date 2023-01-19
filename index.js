@@ -8,7 +8,8 @@ const PORT = process.env.PORT || 3001; // Chooses between ports; first parameter
 // * Socket.io add ons
 const http = require("http")
 const {Server} = require("socket.io")
-const cors = require("cors")
+const cors = require("cors");
+const { create } = require("domain");
 app.use(cors())
 
 const server = http.createServer(app)
@@ -121,18 +122,7 @@ app.get("/get_collegeGE" ,async(req,res) =>{
   await browser.close()
 })
 
-// app.post("/api", (req,res) =>{
-//   // res.send("Hello from server")
-//   console.log("I got a request")
-//   console.log("Request: ",req)
-// })
 
-
-
-
-// app.listen(PORT, () => { // * Server listens to PORT
-//   console.log(`Server listening on ${PORT}`);
-// });
 
 // ! FOR POST REQUESTS
 io.on("connection",  (socket) => { // * Detects whenever someone connects to the website
@@ -198,24 +188,83 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
     await browser.close()
     socket.emit("getSelectedClasses", returnData) // Sends available classes to client
 
-    console.log("return data: ", returnData)
+    // console.log("return data: ", returnData)
     
     
     
   }) //socket.on
 
   socket.on("generateSchedule", async (selectedClasses) =>{
+    async function createCourseBlock(pageInstance,className){
+      
+      const query_sectionTable = ".sectionTable > tbody > tr > " // query base for all target queries
+      const query_section = query_sectionTable +  "th[scope=row]"
+      const query_classNumber = query_sectionTable + "th+td"
+      const query_days = query_sectionTable + "th+td+td+td+td+td+td" // * hard coded td's... lol; refractor later
+      const query_time = query_sectionTable + "th+td+td+td+td+td+td+td"
+      const query_isOpen = query_sectionTable + "th+td+td+td+td+td+td+td+td"
+      const query_location = query_sectionTable + "th+td+td+td+td+td+td+td+td+td"
+      const query_instructor = query_sectionTable + "th+td+td+td+td+td+td+td+td+td+td"
+      
+      const courseBlock = { // it will depend in each index if the index for its isOpen is true
+        section: await pageInstance.evaluate( () => (Array.from(document.querySelectorAll(".sectionTable > tbody > tr > " + "th[scope=row]")).map(child => child.textContent))), // section
+        classNumber: await pageInstance.evaluate( () => (Array.from(document.querySelectorAll(".sectionTable > tbody > tr > " + "th+td")).map(child => child.textContent))), //classNumber
+        days: await pageInstance.evaluate( () => (Array.from(document.querySelectorAll(".sectionTable > tbody > tr > " + "th+td+td+td+td+td+td")).map(child => child.textContent))), //days
+        time: await pageInstance.evaluate( () => (Array.from(document.querySelectorAll(".sectionTable > tbody > tr > " + "th+td+td+td+td+td+td+td")).map(child => child.textContent))), //time
+        isOpen: await pageInstance.evaluate( () => (Array.from(document.querySelectorAll(".sectionTable > tbody > tr > " +  "th+td+td+td+td+td+td+td+td")).map(child => child.innerHTML))), // open seats
+        location: await pageInstance.evaluate( () => (Array.from(document.querySelectorAll(".sectionTable > tbody > tr > " + "th+td+td+td+td+td+td+td+td+td")).map(child => child.textContent))), //location
+        instructor: await pageInstance.evaluate( () => (Array.from(document.querySelectorAll(".sectionTable > tbody > tr > " + "th+td+td+td+td+td+td+td+td+td+td")).map(child => child.textContent))), //instructor
+      } //courseBlock
+
+      // courseBlock.section = await pageInstance.evaluate( () => (Array.from(document.querySelectorAll(".sectionTable > tbody > tr > th+td+td+td+td+td+td")).map(child => child.textContent)))
+
+      // const courseBlocks = await pageInstance.evaluate( () =>{ // * Returns an array of all CSULB majors
+      //   return Array.from(document.querySelectorAll(".sectionTable > tbody > tr > th+td+td+td+td+td+td")).map(child => child.textContent)
+      // }) //courseBlocks
+  
+        console.log("courseBlocks inside func: ",courseBlock)
+    }
+
 
     const browser  = await puppeteer.launch()
     const page = await browser.newPage()
-    for (let i=0; i<selectedClasses.length; i++){
-      const currentClass = selectedClasses[i]
-      const type = currentClass.type
-      const abbreviation = getAbbreviation(currentClass.valueName,type)
-      const url = `http://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/${type === "byMajor" ? "By_College" : "By_GE_Requirement"}/${abbreviation}.html`
+    const returnData = selectedClasses.map(classObj => ({
+      className: classObj.valueName,
+      openSeats: []
+    }))
 
-      console.log(" URL: ",url)
+    console.log("return data: ",returnData)
+    // console.log("Selected Classes: ",selectedClasses)
+    for (let i=0; i<selectedClasses.length; i++){ // itereates through each requested class
+      const currentClass = selectedClasses[i]
+      const requestedClasses = currentClass.availableClasses.filter(classObj => classObj.isSelected)
+      const type = currentClass.type
+      const className = currentClass.valueName
+      const abbreviation = getAbbreviation(className,type)
+      const url = `http://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/${type === "byMajor" ? "By_College" : "By_GE_Requirement"}/${abbreviation}.html`
+      await page.goto(url)
+
+      createCourseBlock(page)
+      
+
+      // const test = courseBlocks[0]
+      // console.log("Test ",test.length)
+      // console.log("From server Course Blocks: ",courseBlocks)
+      // socket.emit("recieve_GeneratedSchedule",courseBlocks)
+
+      // courseBlocks[0][0].forEach(element => console.log(element))
+      
+
+      // const requestedCourseBlocks = requestedClasses.map(requestedClass => {
+
+      // })
+
+      // console.log("requested clases ",requestedClasses )
+      // console.log("Course Blocks: ",courseBlocks)
+
+
     }
+
     await browser.close()
   })// generateSchedule
 }) // io.on
