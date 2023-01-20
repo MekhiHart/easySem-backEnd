@@ -210,8 +210,10 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
       // const query_location = query_sectionTable + "th+td+td+td+td+td+td+td+td+td"
       // const query_instructor = query_sectionTable + "th+td+td+td+td+td+td+td+td+td+td"
       
+
+      // ! add a parameter for evaluate to pass in query variables
       const courseBlock = { // it will depend in each index if the index for its isOpen is true
-        section: await pageInstance.evaluate( () => (Array.from(document.querySelectorAll("#pageContent > div.subjectContainer > div.session > div:nth-child(1) > div + .sectionTable > tbody > tr > " + "th[scope=row]")).map(child => child.textContent))), // section
+        section: await pageInstance.evaluate( () => (Array.from(document.querySelectorAll("#pageContent > div.subjectContainer > div.session > div:nth-child(1) > div + .sectionTable > tbody > tr > th[scope=row]")).map(child => child.textContent))), // section
         classNumber: await pageInstance.evaluate( () => (Array.from(document.querySelectorAll(".sectionTable > tbody > tr > " + "th+td")).map(child => child.textContent))), //classNumber
         days: await pageInstance.evaluate( () => (Array.from(document.querySelectorAll(".sectionTable > tbody > tr > " + "th+td+td+td+td+td+td")).map(child => child.textContent))), //days
         time: await pageInstance.evaluate( () => (Array.from(document.querySelectorAll(".sectionTable > tbody > tr > " + "th+td+td+td+td+td+td+td")).map(child => child.textContent))), //time
@@ -226,15 +228,17 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
       // console.log("Requested Classes: ",classList)
       console.log("Classlist var: ",classList[0])
       const courseBlocks = await pageInstance.evaluate( (className) =>{ // * Returns an array of all CSULB majors
-        return Array.from(document.querySelectorAll(".courseHeader > h4")).find(child => child.textContent === className).parentElement.parentElement.textContent // ! Need to pass in an argument for .evaluate in order to fix reference error
+        return Array.from(Array.from(document.querySelectorAll(".courseHeader > h4")).find(child => child.textContent === className).parentElement.parentElement.querySelectorAll('.sectionTable > tbody > tr > th[scope=row]')).map(child => child.textContent)// ! Need to pass in an argument for .evaluate in order to fix reference error
       },classList[0]) //courseBlocks
-      // ! need to find the css selector of the .courseHeader
-      console.log("Course Block: ",courseBlock)
+
+      // const courseBlocks = await pageInstance.evaluate("\\.courseHeader[contains('309')]",document.body,null.XPath)
+      // // ! need to find the css selector of the .courseHeader
+      // console.log("Course Block: ",courseBlock)
 
       // console.log(courseBlocks)
 
   
-        // console.log("courseBlocks inside func: ",courseBlock)
+        console.log("courseBlocks inside func: ",courseBlocks)
     } //! createCourseBlock
 
 
