@@ -237,7 +237,7 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
         courseBlock_instructor: await getQueryInformation(requestedClassName,query_instructor,false), //instructor
       } //courseBlock
 
-      for (let idx=0; idx<courseBlock.courseBlock_isOpen.length;idx++){
+      for (let idx=0; idx<courseBlock.courseBlock_isOpen.length;idx++){ // Creates section object for open sections
         const currentSection_isOpen = courseBlock.courseBlock_isOpen[idx]
         if (currentSection_isOpen){ // Creates section object for open sections
           openSections.push({
@@ -257,14 +257,16 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
         }
       }
 
-      console.log("Open idx: ", openSections)
+      // console.log("Open idx: ", openSections)
+      return openSections
 
 
-    } //! createCourseBlock
+    } //! createCourseBlock()
 
     const browser  = await puppeteer.launch()
     const page = await browser.newPage()
     const requestedClasses = []
+    const returnData = []
 
     for (let i=0;i<selectedClasses.length; i++){ // filters through classes that our only selected, and adding a type property for the getAbbreviation function
       const currentClass = selectedClasses[i]
@@ -284,33 +286,19 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
       const currentRequestedClassType = currentRequestedClass.type
       const categoryName = currentRequestedClass.categoryName
       const abbreviation = getAbbreviation(categoryName,currentRequestedClassType)
-      // console.log("Category Name: ",categoryName)
-      // console.log("Abbreviation: ",abbreviation)
-      // console.log("current class type: ",currentRequestedClassType)
-      // console.log("name: ",currentRequestedClassName)
-      const url = `http://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/${currentRequestedClassType === "byMajor" ? "By_College" : "By_GE_Requirement"}/${abbreviation}.html`
+      const url = `http://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/${currentRequestedClassType === "byMajor" ? "By_College" : "By_GE_Requirement"}/${abbreviation}.html` // TODO MAKE HTML DYNAMIC
       await page.goto(url)
 
-      await createCourseBlock(page, currentRequestedClassName) // ! Causes error if await is exempted
-      
-      // const test = courseBlocks[0]
-      // console.log("Test ",test.length)
-      // console.log("From server Course Blocks: ",courseBlocks)
-      // socket.emit("recieve_GeneratedSchedule",courseBlocks)
-
-      // courseBlocks[0][0].forEach(element => console.log(element))
-      
-
-      // const requestedCourseBlocks = requestedClasses.map(requestedClass => {
-
-      // })
-
-      // console.log("requested clases ",requestedClasses )
-      // console.log("Course Blocks: ",courseBlocks)
-
-
+      const openSections = await createCourseBlock(page, currentRequestedClassName) // ! Causes error if await is exempted
+      // requestedClasses.push({className:currentRequestedClassName, openSections:openSections})
+      returnData.push({valueName:currentRequestedClassName, openSections:openSections})
     }
-
+    console.log("Return Data: ",returnData)
+    
+    returnData.forEach(obj =>{
+      console.log("ClassName: ",obj.valueName)
+      console.log("Open Sections: ",obj.openSections)
+    })
     await browser.close()
   })//! generateSchedule
 }) // io.on
