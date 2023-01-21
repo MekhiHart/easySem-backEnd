@@ -197,7 +197,6 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
 
   socket.on("generateSchedule", async (selectedClasses) =>{
     async function createCourseBlock(pageInstance,requestedClassName,isOpen_property){ // * returns array for requested
-
       // * need to use await when using getQueryInformation
       const getQueryInformation = async (className,queryProperty,isOpen_property) =>{
         return await pageInstance.evaluate( (className,queryProperty,isOpen) =>{ // * Returns an array of all CSULB majors
@@ -215,6 +214,7 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
         },className,queryProperty,isOpen_property)
       } // * getQueryInformation
 
+      const openSections = []
       // !  For some reason, variables are being seen as undefined if the variable is read
       const query_sectionTable = ".sectionTable > tbody > tr > " // query base for all target queries
       const query_section = query_sectionTable +  "th[scope=row]"
@@ -228,46 +228,38 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
       
       // ! add a parameter for evaluate to pass in query variables
       const courseBlock = { // it will depend in each index if the index for its isOpen is true
-        section: await getQueryInformation(requestedClassName,query_section,false), // section
-        classNumber: await getQueryInformation(requestedClassName,query_classNumber,false) , //classNumber
-        days: await getQueryInformation(requestedClassName,query_days,false), //days
-        time: await getQueryInformation(requestedClassName,query_time,false), //time
-        isOpen: await getQueryInformation(requestedClassName,query_isOpen,true), // open seats
-        location:await getQueryInformation(requestedClassName,query_location,false), //location
-        instructor: await getQueryInformation(requestedClassName,query_instructor,false), //instructor
+        courseBlock_section: await getQueryInformation(requestedClassName,query_section,false), // section
+        courseBlock_classNumber: await getQueryInformation(requestedClassName,query_classNumber,false) , //classNumber
+        courseBlock_days: await getQueryInformation(requestedClassName,query_days,false), //days
+        courseBlock_time: await getQueryInformation(requestedClassName,query_time,false), //time
+        courseBlock_isOpen: await getQueryInformation(requestedClassName,query_isOpen,true), // open seats
+        courseBlock_location:await getQueryInformation(requestedClassName,query_location,false), //location
+        courseBlock_instructor: await getQueryInformation(requestedClassName,query_instructor,false), //instructor
       } //courseBlock
 
-      // courseBlock.section = await pageInstance.evaluate( () => (Array.from(document.querySelectorAll(".sectionTable > tbody > tr > th+td+td+td+td+td+td")).map(child => child.textContent)))
+      for (let idx=0; idx<courseBlock.courseBlock_isOpen.length;idx++){
+        const currentSection_isOpen = courseBlock.courseBlock_isOpen[idx]
+        if (currentSection_isOpen){ // Creates section object for open sections
+          openSections.push({
+            section: courseBlock.courseBlock_section[idx],
+            classNumber: courseBlock.courseBlock_classNumber[idx],
+            days: courseBlock.courseBlock_days[idx],
+            time:courseBlock.courseBlock_time[idx],
+            location:courseBlock.courseBlock_location[idx],
+            instructor:courseBlock.courseBlock_instructor[idx],
+            instructorStats:{
+              rating:null,
+              retakePercent:null,
+              difficulty:null,
+              rmp_link:null
+            }
+          })
+        }
+      }
 
-      // example: BLAW 309 - CONSUMER LEGAL & ECON ENVIRON
-      // console.log("Requested Classes: ",classList)
-      // console.log("Classlist var: ",classList[0])
-      // ! IMportnat
-      // const QueryInformation = await pageInstance.evaluate( (className) =>{ // * Returns an array of all CSULB majors
-      //   const CourseBlock_HeaderArray = Array.from(document.querySelectorAll(".courseHeader > h4"))
-      //   const targetHeader = CourseBlock_HeaderArray.find(child => child.textContent === className)
-      //   const targetCourseBlock = targetHeader.parentElement.parentElement
-      //   const queryArray = Array.from(targetCourseBlock.querySelectorAll('.sectionTable > tbody > tr > th[scope=row]'))
-      //   const queryInformation = queryArray.map(child => child.textContent)
-      //   return queryInformation
+      console.log("Open idx: ", openSections)
 
-      //   const query = "hello"
-      //   console.log("Here: ",targetCourseBlock.textContent)
 
-      //   return Array.from(Array.from(document.querySelectorAll(".courseHeader > h4")).find(child => child.textContent === className).parentElement.parentElement.querySelectorAll('.sectionTable > tbody > tr > th[scope=row]')).map(child => child.textContent)// ! Need to pass in an argument for .evaluate in order to fix reference error
-      // },requestedClass) //courseBlocks
-
-      console.log("Info: ",courseBlock)
-      // console.log("Information Here: ", await getQueryInformation(requestedClass,query_section))
-
-      // const courseBlocks = await pageInstance.evaluate("\\.courseHeader[contains('309')]",document.body,null.XPath)
-      // // ! need to find the css selector of the .courseHeader
-      // console.log("Course Block: ",courseBlock)
-
-      // console.log("Here: ",queryInformation)
-
-      // console.log("Yeheheh")
-        // console.log("courseBlocks inside func: ",courseBlocks)
     } //! createCourseBlock
 
     const browser  = await puppeteer.launch()
