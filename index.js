@@ -125,7 +125,6 @@ app.get("/get_collegeGE" ,async(req,res) =>{
 })
 
 
-
 // ! FOR POST REQUESTS
 io.on("connection",  (socket) => { // * Detects whenever someone connects to the website
   function getAbbreviation(name,type){ // gets url for the check boxes selected
@@ -197,72 +196,111 @@ io.on("connection",  (socket) => { // * Detects whenever someone connects to the
   }) //socket.on
 
   socket.on("generateSchedule", async (selectedClasses) =>{
-    async function createCourseBlock(pageInstance,requestedClasses){
-      const classList = requestedClasses.map(classObj => classObj.valueName)
-      // const xpathResult = document.evaluate(xpathExpression, contextNode, namespaceResolver, resultType, result);
-      // !  For some reason, variables are being seen as undefined if the variable is read
-      // const query_sectionTable = ".sectionTable > tbody > tr > " // query base for all target queries
-      // const query_section = query_sectionTable +  "th[scope=row]"
-      // const query_classNumber = query_sectionTable + "th+td"
-      // const query_days = query_sectionTable + "th+td+td+td+td+td+td" // * hard coded td's... lol; refractor later
-      // const query_time = query_sectionTable + "th+td+td+td+td+td+td+td"
-      // const query_isOpen = query_sectionTable + "th+td+td+td+td+td+td+td+td"
-      // const query_location = query_sectionTable + "th+td+td+td+td+td+td+td+td+td"
-      // const query_instructor = query_sectionTable + "th+td+td+td+td+td+td+td+td+td+td"
-      
+    async function createCourseBlock(pageInstance,requestedClassName,isOpen_property){ // * returns array for requested
 
+      // * need to use await when using getQueryInformation
+      const getQueryInformation = async (className,queryProperty,isOpen_property) =>{
+        return await pageInstance.evaluate( (className,queryProperty,isOpen) =>{ // * Returns an array of all CSULB majors
+          const CourseBlock_HeaderArray = Array.from(document.querySelectorAll(".courseHeader > h4"))
+          const targetHeader = CourseBlock_HeaderArray.find(child => child.textContent === className)
+          const targetCourseBlock = targetHeader.parentElement.parentElement
+          const queryArray = Array.from(targetCourseBlock.querySelectorAll(queryProperty))
+
+          // checks if the innerHTNMl length is 0; if it's not, then the UI in the CSULB website displays a green dot signifying that is it open
+          if (isOpen) return queryArray.map(child => child.innerHTML.length===0 ? false:true) // ! Finding for innterHTML for if the class is Open
+
+          else return queryArray.map(child => child.textContent)
+  
+          // * full code without deconstruction: return Array.from(Array.from(document.querySelectorAll(".courseHeader > h4")).find(child => child.textContent === className).parentElement.parentElement.querySelectorAll('.sectionTable > tbody > tr > th[scope=row]')).map(child => child.textContent)// ! Need to pass in an argument for .evaluate in order to fix reference error
+        },className,queryProperty,isOpen_property)
+      } // * getQueryInformation
+
+      // !  For some reason, variables are being seen as undefined if the variable is read
+      const query_sectionTable = ".sectionTable > tbody > tr > " // query base for all target queries
+      const query_section = query_sectionTable +  "th[scope=row]"
+      const query_classNumber = query_sectionTable + "th+td"
+      const query_days = query_sectionTable + "th+td+td+td+td+td+td" // * hard coded td's... lol; refractor later
+      const query_time = query_sectionTable + "th+td+td+td+td+td+td+td"
+      const query_isOpen = query_sectionTable + "th+td+td+td+td+td+td+td+td"
+      const query_location = query_sectionTable + "th+td+td+td+td+td+td+td+td+td"
+      const query_instructor = query_sectionTable + "th+td+td+td+td+td+td+td+td+td+td"
+
+      
       // ! add a parameter for evaluate to pass in query variables
       const courseBlock = { // it will depend in each index if the index for its isOpen is true
-        section: await pageInstance.evaluate( () => (Array.from(document.querySelectorAll("#pageContent > div.subjectContainer > div.session > div:nth-child(1) > div + .sectionTable > tbody > tr > th[scope=row]")).map(child => child.textContent))), // section
-        classNumber: await pageInstance.evaluate( () => (Array.from(document.querySelectorAll(".sectionTable > tbody > tr > " + "th+td")).map(child => child.textContent))), //classNumber
-        days: await pageInstance.evaluate( () => (Array.from(document.querySelectorAll(".sectionTable > tbody > tr > " + "th+td+td+td+td+td+td")).map(child => child.textContent))), //days
-        time: await pageInstance.evaluate( () => (Array.from(document.querySelectorAll(".sectionTable > tbody > tr > " + "th+td+td+td+td+td+td+td")).map(child => child.textContent))), //time
-        isOpen: await pageInstance.evaluate( () => (Array.from(document.querySelectorAll(".sectionTable > tbody > tr > " +  "th+td+td+td+td+td+td+td+td")).map(child => child.innerHTML))), // open seats
-        location: await pageInstance.evaluate( () => (Array.from(document.querySelectorAll(".sectionTable > tbody > tr > " + "th+td+td+td+td+td+td+td+td+td")).map(child => child.textContent))), //location
-        instructor: await pageInstance.evaluate( () => (Array.from(document.querySelectorAll(".sectionTable > tbody > tr > " + "th+td+td+td+td+td+td+td+td+td+td")).map(child => child.textContent))), //instructor
+        section: await getQueryInformation(requestedClassName,query_section,false), // section
+        classNumber: await getQueryInformation(requestedClassName,query_classNumber,false) , //classNumber
+        days: await getQueryInformation(requestedClassName,query_days,false), //days
+        time: await getQueryInformation(requestedClassName,query_time,false), //time
+        isOpen: await getQueryInformation(requestedClassName,query_isOpen,true), // open seats
+        location:await getQueryInformation(requestedClassName,query_location,false), //location
+        instructor: await getQueryInformation(requestedClassName,query_instructor,false), //instructor
       } //courseBlock
 
       // courseBlock.section = await pageInstance.evaluate( () => (Array.from(document.querySelectorAll(".sectionTable > tbody > tr > th+td+td+td+td+td+td")).map(child => child.textContent)))
 
       // example: BLAW 309 - CONSUMER LEGAL & ECON ENVIRON
       // console.log("Requested Classes: ",classList)
-      console.log("Classlist var: ",classList[0])
-      const courseBlocks = await pageInstance.evaluate( (className) =>{ // * Returns an array of all CSULB majors
-        return Array.from(Array.from(document.querySelectorAll(".courseHeader > h4")).find(child => child.textContent === className).parentElement.parentElement.querySelectorAll('.sectionTable > tbody > tr > th[scope=row]')).map(child => child.textContent)// ! Need to pass in an argument for .evaluate in order to fix reference error
-      },classList[0]) //courseBlocks
+      // console.log("Classlist var: ",classList[0])
+      // ! IMportnat
+      // const QueryInformation = await pageInstance.evaluate( (className) =>{ // * Returns an array of all CSULB majors
+      //   const CourseBlock_HeaderArray = Array.from(document.querySelectorAll(".courseHeader > h4"))
+      //   const targetHeader = CourseBlock_HeaderArray.find(child => child.textContent === className)
+      //   const targetCourseBlock = targetHeader.parentElement.parentElement
+      //   const queryArray = Array.from(targetCourseBlock.querySelectorAll('.sectionTable > tbody > tr > th[scope=row]'))
+      //   const queryInformation = queryArray.map(child => child.textContent)
+      //   return queryInformation
+
+      //   const query = "hello"
+      //   console.log("Here: ",targetCourseBlock.textContent)
+
+      //   return Array.from(Array.from(document.querySelectorAll(".courseHeader > h4")).find(child => child.textContent === className).parentElement.parentElement.querySelectorAll('.sectionTable > tbody > tr > th[scope=row]')).map(child => child.textContent)// ! Need to pass in an argument for .evaluate in order to fix reference error
+      // },requestedClass) //courseBlocks
+
+      console.log("Info: ",courseBlock)
+      // console.log("Information Here: ", await getQueryInformation(requestedClass,query_section))
 
       // const courseBlocks = await pageInstance.evaluate("\\.courseHeader[contains('309')]",document.body,null.XPath)
       // // ! need to find the css selector of the .courseHeader
       // console.log("Course Block: ",courseBlock)
 
-      // console.log(courseBlocks)
+      // console.log("Here: ",queryInformation)
 
-  
-        console.log("courseBlocks inside func: ",courseBlocks)
+      // console.log("Yeheheh")
+        // console.log("courseBlocks inside func: ",courseBlocks)
     } //! createCourseBlock
-
 
     const browser  = await puppeteer.launch()
     const page = await browser.newPage()
-    const returnData = selectedClasses.map(classObj => ({
-      className: classObj.valueName,
-      openSeats: []
-    }))
+    const requestedClasses = []
 
-    console.log("return data: ",returnData)
-    // console.log("Selected Classes: ",selectedClasses)
-    for (let i=0; i<selectedClasses.length; i++){ // itereates through each requested class
+    for (let i=0;i<selectedClasses.length; i++){ // filters through classes that our only selected, and adding a type property for the getAbbreviation function
       const currentClass = selectedClasses[i]
-      const requestedClasses = currentClass.availableClasses.filter(classObj => classObj.isSelected)
-      const type = currentClass.type
-      const categoryName = currentClass.valueName
-      const abbreviation = getAbbreviation(categoryName,type)
-      const url = `http://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/${type === "byMajor" ? "By_College" : "By_GE_Requirement"}/${abbreviation}.html`
+      currentClass.availableClasses.forEach(classObj => {
+        // console.log("Here: ",currentClass)
+        const currentType = currentClass.type
+        const categoryName = currentClass.valueName
+        if (classObj.isSelected) requestedClasses.push({...classObj, type: currentType, categoryName: categoryName })
+      })
+
+
+    }
+
+    for (let i=0; i<requestedClasses.length; i++){ // iterates through each requested class
+      const currentRequestedClass = requestedClasses[i]
+      const currentRequestedClassName = currentRequestedClass.valueName
+      const currentRequestedClassType = currentRequestedClass.type
+      const categoryName = currentRequestedClass.categoryName
+      const abbreviation = getAbbreviation(categoryName,currentRequestedClassType)
+      // console.log("Category Name: ",categoryName)
+      // console.log("Abbreviation: ",abbreviation)
+      // console.log("current class type: ",currentRequestedClassType)
+      // console.log("name: ",currentRequestedClassName)
+      const url = `http://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2023/${currentRequestedClassType === "byMajor" ? "By_College" : "By_GE_Requirement"}/${abbreviation}.html`
       await page.goto(url)
 
-      createCourseBlock(page,requestedClasses)
+      await createCourseBlock(page, currentRequestedClassName) // ! Causes error if await is exempted
       
-
       // const test = courseBlocks[0]
       // console.log("Test ",test.length)
       // console.log("From server Course Blocks: ",courseBlocks)
